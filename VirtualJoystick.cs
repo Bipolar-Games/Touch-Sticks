@@ -12,10 +12,10 @@ namespace Bipolar.TouchSticks
     public class VirtualJoystick : MonoBehaviour
     {
         /// <summary>Raised when a finger starts controlling this stick.</summary>
-        public event Action Pressed;
+        public event Action OnPressed;
 
         /// <summary>Raised when the finger controlling this stick is lifted (or the stick is disabled).</summary>
-        public event Action Released;
+        public event Action OnReleased;
 
         private const int None = int.MinValue;
         private const int TextureSize = 128;
@@ -49,6 +49,15 @@ namespace Bipolar.TouchSticks
         [SerializeField]
         private float deadZone = 0.12f;
 
+        [Tooltip("Cut: the value jumps from 0 to the dead zone size. Rescale: the value grows smoothly from 0 at the dead zone edge. Ignored when Normalize Output is on.")]
+        [SerializeField]
+        private DeadZoneMode deadZoneMode = DeadZoneMode.Cut;
+        public DeadZoneMode DeadZoneMode
+        {
+            get => deadZoneMode;
+            set => deadZoneMode = value;
+        }
+
         [Tooltip("Value always has length 1 (or 0 inside the dead zone) instead of 0..1.")]
         [SerializeField]
         private bool normalizeOutput;
@@ -65,6 +74,15 @@ namespace Bipolar.TouchSticks
         [SerializeField]
         private Color color = Color.white;
 
+        [Tooltip("When false the stick works as usual but is not drawn.")]
+        [SerializeField]
+        private bool visible = true;
+        public bool Visible
+        {
+            get => visible;
+            set => visible = value;
+        }
+
         [Header("States")]
         [SerializeField]
         private int pointerId = None;
@@ -77,7 +95,7 @@ namespace Bipolar.TouchSticks
         private Vector2 origin;
         private Vector2 current;
 
-        /// <summary>Deflection after dead zone: length 0..1, or exactly 1 when output is normalized.</summary>
+        /// <summary>Deflection after the dead zone: length 0..1, or exactly 1 when output is normalized. See <see cref="DeadZoneMode"/>.</summary>
         public Vector2 Value { get; private set; }
 
         /// <summary>True while a finger controls this stick.</summary>
@@ -193,7 +211,7 @@ namespace Bipolar.TouchSticks
                 pointerId = pointer.Id;
                 origin = floating ? pointer.Position : IdleCenter();
                 current = pointer.Position;
-                Pressed?.Invoke();
+                OnPressed?.Invoke();
                 return;
             }
         }
@@ -206,7 +224,7 @@ namespace Bipolar.TouchSticks
             TouchPointers.Release(pointerId);
             pointerId = None;
             Value = Vector2.zero;
-            Released?.Invoke();
+            OnReleased?.Invoke();
         }
 
         private void UpdateValue()
@@ -226,10 +244,23 @@ namespace Bipolar.TouchSticks
                     origin = current - deflection * radius;
             }
 
-            if (deflection.magnitude < deadZone)
-                Value = Vector2.zero;
-            else
-                Value = normalizeOutput ? deflection.normalized : deflection;
+            Value = ApplyDeadZone(deflection);
+        }
+
+        private Vector2 ApplyDeadZone(Vector2 deflection)
+        {
+            float magnitude = deflection.magnitude;
+            if (magnitude < deadZone)
+                return Vector2.zero;
+
+            var direction = deflection.normalized;
+            if (normalizeOutput)
+                return direction;
+
+            if (deadZoneMode == DeadZoneMode.Cut)
+                return deflection;
+
+            return direction * Mathf.InverseLerp(deadZone, 1f, magnitude);
         }
 
         private Vector2 IdleCenter()
@@ -315,7 +346,7 @@ namespace Bipolar.TouchSticks
 
                 EnsureTextures();
                 for (int i = 0; i < sticks.Count; i++)
-                    if (sticks[i].InputEnabled)
+                    if (sticks[i].InputEnabled && sticks[i].Visible)
                         sticks[i].Draw();
             }
 
