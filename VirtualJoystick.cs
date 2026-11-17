@@ -70,6 +70,15 @@ namespace Bipolar.TouchSticks
         [SerializeField]
         private bool followFinger = true;
 
+        [Header("Input System")]
+        [Tooltip("Mirror Value into a TouchStick Input System device, so an action can bind <TouchStick>/stick. Active only when touch is in use.")]
+        [SerializeField]
+        private bool writeToInputSystem = true;
+
+        [Tooltip("Optional usage of the device, to tell sticks apart: bind <TouchStick>{Left}/stick. Leave empty for a single stick.")]
+        [SerializeField]
+        private string inputUsage;
+
         [Header("Look")]
         [SerializeField]
         private Color color = Color.white;
@@ -92,6 +101,7 @@ namespace Bipolar.TouchSticks
         private static Texture2D ringTexture;
         private static Texture2D discTexture;
 
+        private readonly StickInputBridge inputBridge = new StickInputBridge();
         private Vector2 origin;
         private Vector2 current;
 
@@ -140,12 +150,15 @@ namespace Bipolar.TouchSticks
                 updater = CreateUpdater();
 
             sticks.Add(this);
+            if (writeToInputSystem)
+                inputBridge.Open(inputUsage);
         }
 
         private void OnDisable()
         {
             sticks.Remove(this);
             ReleasePointer();
+            inputBridge.Close();
         }
 
         private static Updater CreateUpdater()
@@ -165,6 +178,7 @@ namespace Bipolar.TouchSticks
                 TryGrabPointer(pointers);
 
             UpdateValue();
+            inputBridge.Write(Value);
         }
 
         private void FollowPointer(IReadOnlyList<Pointer> pointers)

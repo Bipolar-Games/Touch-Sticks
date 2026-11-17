@@ -13,8 +13,6 @@ Virtual on-screen joysticks for mobile, drawn with IMGUI. No Canvas, no EventSys
 ## When NOT to use
 
 - You need a stick that is part of a Canvas layout, animated or skinned: build it with UI instead.
-- You want the value to flow through Input System actions (rebinding, control schemes): this module reads raw pointers and
-  does not write to any action. Read `Value` from code, or write a small bridge.
 - You need dozens of sticks (IMGUI allocates a little).
 
 ## Quick start
@@ -44,6 +42,24 @@ isFiring = aim.IsPressed;
 `Configure(captureZone, idleAnchor, deadZone, normalizeOutput)` sets the main parameters when the component is added from code.
 Sticks added in the editor are configured in the Inspector.
 
+## Input System actions
+
+Each stick mirrors its `Value` into a virtual Input System device `TouchStick`, so a game only needs an action binding and no
+code that knows about this module:
+
+1. Add a `VirtualJoystick` (leave `Write To Input System` on).
+2. In the Input Actions editor bind an action (Vector2) to `<TouchStick>/stick`.
+   With several sticks give each an `Input Usage` (for example `Left`, `Right`) and bind `<TouchStick>{Left}/stick`.
+3. Read the action as usual. Rebinding and control schemes work like for any other device.
+
+Notes:
+
+- The device exists only while a stick is enabled and touch is in use (see Platform check); on desktop the binding is just silent.
+- The dead zone is applied by the stick. Do not add a `stickDeadzone` processor to the binding, it would apply twice.
+- The device is not a `Pointer` and not a `Gamepad`, so it never mixes with a real mouse or pad. Code that tells devices apart
+  (for example "delta in pixels" for a `Pointer`, "rate" for everything else) treats it as a stick.
+- Turn `Write To Input System` off to read `Value` from code only.
+
 ## Main API
 
 | Type / member | Purpose |
@@ -52,6 +68,7 @@ Sticks added in the editor are configured in the Inspector.
 | `Value`, `IsPressed` | Current deflection and "finger is down". |
 | `OnPressed`, `OnReleased` | Raised when a finger takes or leaves the stick (also when the stick is disabled). |
 | `Color`, `Visible`, `InputEnabled`, `DeadZoneMode` | Runtime settings. |
+| `TouchStickDevice` | Virtual Input System device (`<TouchStick>/stick`) that carries the stick value to actions. |
 | `Configure(...)` | Sets the main parameters from code. |
 | `DeadZoneMode` | `Cut` or `Rescale`, see below. |
 | `TouchPointers` | Shared per-frame pointer snapshot. `Enabled` tells whether touch is in use. |
@@ -134,8 +151,8 @@ Call `TouchPointers.SetSource(...)` to plug in your own source.
 ## Don't
 
 - Don't read `Value` in `Update` code that runs before the `Updater` (order below -100) and expect the current frame.
-- Don't add a second input path for the same finger in the game (for example a swipe binding in an Input System action
-  next to a stick): the finger would steer twice.
+- Don't add a second input path for the same finger in the game (for example a swipe binding like
+  `<Touchscreen>/primaryTouch/delta` in the same action next to a stick binding): the finger would steer twice.
 - Don't rely on `TouchPointers.Enabled` on desktop without `touch=1`: the sticks are intentionally inactive there.
 
 ## Dependencies
