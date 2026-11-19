@@ -9,7 +9,7 @@ namespace Bipolar.TouchSticks
     /// A hidden updater, created at runtime when the first stick is enabled, drives and draws all sticks,
     /// so this component has no Update or OnGUI of its own.
     /// </summary>
-    public class VirtualJoystick : MonoBehaviour
+    public class VirtualJoystick : MonoBehaviour 
     {
         /// <summary>Raised when a finger starts controlling this stick.</summary>
         public event Action OnPressed;
@@ -44,7 +44,7 @@ namespace Bipolar.TouchSticks
         [SerializeField]
         private float minMarginPixels = 20f;
 
-        [Header("Behaviour")]
+        [Header("Behavior")]
         [Range(0f, 1f)]
         [SerializeField]
         private float deadZone = 0.12f;
